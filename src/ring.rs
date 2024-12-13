@@ -1,16 +1,22 @@
 use std::{
+    cell::OnceCell,
     future::Future,
     io,
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll, Waker},
-    thread,
+    thread::{self, JoinHandle},
 };
 
 use io_uring::{cqueue, squeue, IoUring};
 
-static mut RING: Option<IoUring> = None;
+static mut RING: OnceCell<IoUring> = OnceCell::new();
 static mut MUTEX: Mutex<()> = Mutex::new(());
+
+static ALREADY_STARTED: &str = "uring already started";
+static NO_URING: &str = "no uring";
+static SQ_FULL: &str = "uring squeue full";
+static SUBMIT_ERR: &str = "uring submit error";
 
 struct WakerData {
     waker: Waker,
@@ -51,9 +57,7 @@ impl Future for Completion {
             let entry = self.entry.clone().user_data(ptr);
 
             unsafe {
-                if let Err(err) = submit(&entry) {
-                    return Poll::Ready(Err(err));
-                }
+                submit(&entry);
             }
         }
 
@@ -61,21 +65,11 @@ impl Future for Completion {
     }
 }
 
-unsafe fn submit(entry: &squeue::Entry) -> io::Result<()> {
-    let ring = RING
-        .as_mut()
-        .ok_or(io::Error::new(io::ErrorKind::Other, "uring not started"))?;
-
+unsafe fn submit(entry: &squeue::Entry) {
+    let ring = RING.get_mut().expect(NO_URING);
     let _guard = MUTEX.lock().unwrap();
-
-    ring.submission()
-        .push(entry)
-        .map_err(|_| io::Error::new(io::ErrorKind::Other, "squeue full"))?;
-
-    ring.submit()
-        .map_err(|_| io::Error::new(io::ErrorKind::Other, "submit error"))?;
-
-    Ok(())
+    ring.submission().push(entry).expect(SQ_FULL);
+    ring.submit().expect(SUBMIT_ERR);
 }
 
 pub async fn complete(entry: squeue::Entry) -> io::Result<cqueue::Entry> {
@@ -87,26 +81,36 @@ pub async fn complete(entry: squeue::Entry) -> io::Result<cqueue::Entry> {
     completion.await
 }
 
-pub fn start(entries: u32) {
+pub fn init(entries: u32) -> io::Result<()> {
+    let ring = IoUring::new(entries)?;
+    let out = unsafe { RING.set(ring) };
+    out.map_err(|_| io::Error::other(ALREADY_STARTED))?;
+    Ok(())
+}
 
-    if unsafe { RING.is_some() } {
-        panic!("uring already started");
+pub fn start(entries: u32) -> io::Result<JoinHandle<()>> {
+    init(entries)?;
+
+    let handle = thread::spawn(|| loop {
+        enter().unwrap();
+    });
+
+    Ok(handle)
+}
+
+pub fn enter() -> io::Result<()> {
+    let ring = unsafe { RING.get_mut() }.ok_or(io::Error::other(NO_URING))?;
+
+    ring.submit_and_wait(1)
+        .map_err(|_| io::Error::other(SUBMIT_ERR))?;
+
+    while let Some(cqe) = ring.completion().next() {
+        let ptr = cqe.user_data() as *mut Mutex<WakerData>;
+        let waker_data = unsafe { Arc::from_raw(ptr) };
+        let mut waker_data = waker_data.lock().unwrap();
+        waker_data.data = Some(cqe);
+        waker_data.waker.wake_by_ref();
     }
 
-    let ring = unsafe {
-        RING = Some(IoUring::new(entries).expect(""));
-        RING.as_mut().unwrap()
-    };
-
-    thread::spawn(|| loop {
-        ring.submit_and_wait(1).unwrap();
-
-        while let Some(cqe) = ring.completion().next() {
-            let ptr = cqe.user_data() as *mut Mutex<WakerData>;
-            let waker_data = unsafe { Arc::from_raw(ptr) };
-            let mut waker_data = waker_data.lock().unwrap();
-            waker_data.data = Some(cqe);
-            waker_data.waker.wake_by_ref();
-        }
-    });
+    Ok(())
 }

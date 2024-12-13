@@ -9,5 +9,5 @@ license = "MIT"
 io-uring = "0.7.2"
 libc = "0.2.80"
 
-[workspace]
-members = ["wring-test"]
+[dev-dependencies]
+criterion = { version = "0.3", features = ["async_tokio"] }
