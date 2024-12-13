@@ -2,7 +2,7 @@ use std::{io, path::Path};
 
 use io_uring::{opcode, types};
 
-use crate::complete;
+use crate::complete::complete;
 
 use super::util::to_cstring;
 

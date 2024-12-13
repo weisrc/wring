@@ -11,3 +11,4 @@ libc = "0.2.80"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
+tokio = { version = "1.42.0", features = ["full"] }

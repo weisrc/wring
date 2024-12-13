@@ -9,7 +9,7 @@ use std::{
 
 use io_uring::{opcode, types};
 
-use crate::complete;
+use crate::complete::complete;
 
 pub struct Fd {
     inner: Arc<Inner>,

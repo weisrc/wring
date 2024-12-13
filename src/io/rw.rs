@@ -1,4 +1,4 @@
-use crate::complete;
+use crate::complete::complete;
 use io_uring::opcode;
 use std::io;
 
@@ -12,6 +12,13 @@ impl Fd {
             .offset(offset)
             .build();
         let res = complete(entry).await.map(|out| out.result() as usize);
+
+        if let Ok(n) = res {
+            unsafe {
+                buf.set_len(n);
+            }
+        }
+
         (res, buf)
     }
 
