@@ -1,4 +1,8 @@
-# Double Uring
+# wring - *double uring*
+
+[![Crates.io](https://img.shields.io/crates/v/wring)](https://crates.io/crates/wring)
+[![Docs.rs](https://docs.rs/wring/badge.svg)](https://docs.rs/wring)
+[![License](https://img.shields.io/crates/l/wring)](https://crates.io/crates/wring)
 
 Rust `io_uring` library compatible with Tokio.
 
@@ -25,10 +29,12 @@ async fn main() {
 ## Roadmap
 
 - [x] Basic File I/O
+- [x] Background Runner
+- [ ] Async Runtime
 - [ ] Network I/O
 - [ ] Timer
-- [ ] Runtime
 - [ ] Tests
 - [ ] Benchmarks
 - [ ] Documentation
 - [ ] Examples
+- [ ] CI/CD
