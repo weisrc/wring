@@ -9,6 +9,12 @@ Rust `io_uring` library compatible with Tokio.
 > [!WARNING]  
 > This library is under development. Contributions are welcome.
 
+## Objective
+
+This library is mainly used to speedup async file I/O operations. Turning this into a full-fledged async runtime is not the immediate main goal.
+
+## Usage
+
 ```rs
 use wring::fs::File;
 
@@ -29,7 +35,7 @@ async fn main() {
 ## Roadmap
 
 - [x] Basic File I/O
-- [x] Background Runner
+- [x] Background Runner (as Double)
 - [ ] Async Runtime
 - [ ] Network I/O
 - [ ] Timer
