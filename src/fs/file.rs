@@ -25,4 +25,12 @@ impl File {
     pub async fn close(&mut self) -> io::Result<()> {
         self.fd.close().await
     }
+
+    pub fn into_fd(self) -> Fd {
+        self.fd
+    }
+
+    pub fn from_fd(fd: Fd) -> Self {
+        File { fd }
+    }
 }

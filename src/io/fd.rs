@@ -35,6 +35,16 @@ impl Fd {
         self.inner.to_owned().closed.store(true, Ordering::Relaxed);
         Ok(())
     }
+
+    pub fn from_raw_fd(fd: RawFd) -> Self {
+        Self::new(fd)
+    }
+
+    pub fn into_raw_fd(self) -> RawFd {
+        let fd = self.inner.fd;
+        std::mem::forget(self);
+        fd
+    }
 }
 
 struct Inner {
