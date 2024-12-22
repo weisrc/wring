@@ -11,7 +11,7 @@ Rust `io_uring` library compatible with Tokio.
 
 ## Objective
 
-This library is mainly used to speedup async file I/O operations. Turning this into a full-fledged async runtime is not the immediate main goal.
+This library is mainly used to speed up async file I/O operations. Turning this into a full-fledged async runtime is not the immediate main goal.
 
 ## Usage
 
