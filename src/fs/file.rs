@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::io::{Buf, BufMut, ResultWithBuf, Fd};
+use crate::io::{Buf, BufMut, Fd};
 
 use super::open;
 
@@ -14,11 +14,11 @@ impl File {
         Ok(File { fd })
     }
 
-    pub async fn read<T: BufMut>(&self, buf: T, offset: u64) -> ResultWithBuf<T> {
+    pub async fn read<T: BufMut>(&self, buf: &mut T, offset: u64) -> io::Result<usize> {
         self.fd.read(buf, offset).await
     }
 
-    pub async fn write<T: Buf>(&self, buf: T, offset: u64) -> ResultWithBuf<T> {
+    pub async fn write<T: Buf>(&self, buf: &T, offset: u64) -> io::Result<usize> {
         self.fd.write(buf, offset).await
     }
 
