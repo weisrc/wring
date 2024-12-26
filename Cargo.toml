@@ -6,8 +6,10 @@ description = ""
 license = "MIT"
 
 [dependencies]
+crossbeam = { version = "0.8.4", features = ["crossbeam-deque", "crossbeam-queue"] }
 io-uring = "0.7.2"
 libc = "0.2.80"
+parking_lot = "0.12.3"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }

@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::io::{Buf, BufMut, Fd};
+use crate::io::{Buf, BufMut, Fd, Fixed};
 
 use super::open;
 
@@ -20,6 +20,14 @@ impl File {
 
     pub async fn write<T: Buf>(&self, buf: &T, offset: u64) -> io::Result<usize> {
         self.fd.write(buf, offset).await
+    }
+
+    pub async fn read_fixed<T: BufMut>(&self, buf: &mut Fixed<T>, offset: u64) -> io::Result<usize> {
+        self.fd.read_fixed(buf, offset).await
+    }
+
+    pub async fn write_fixed<T: Buf>(&self, buf: &Fixed<T>, offset: u64) -> io::Result<usize> {
+        self.fd.write_fixed(buf, offset).await
     }
 
     pub async fn close(&mut self) -> io::Result<()> {

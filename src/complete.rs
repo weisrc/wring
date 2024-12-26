@@ -8,7 +8,7 @@ use std::{
 
 use io_uring::{cqueue, squeue};
 
-use crate::driver::{submit, CQEHandler};
+use crate::driver::{Driver, CQEHandler};
 
 struct WakerData {
     waker: Waker,
@@ -48,7 +48,7 @@ impl Future for Complete {
             let ptr = Arc::into_raw(waker_data) as u64;
             let entry = self.entry.clone().user_data(ptr);
 
-            submit(&entry);
+            Driver::current().submit(&entry);
         }
 
         Poll::Pending

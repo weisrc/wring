@@ -1,44 +1,50 @@
 use std::{
     io::Result,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{atomic::{AtomicBool, Ordering}, Arc},
     thread::{self, JoinHandle},
 };
 
 use io_uring::opcode;
 
-use crate::{
-    complete::CompleteHandler,
-    driver::{enter, exit, get_ring, init, submit},
-};
+use crate::{complete::CompleteHandler, driver::Driver};
 
-static SHOULD_RUN: AtomicBool = AtomicBool::new(false);
-
-pub struct BackgroundDropGuard {
+pub struct Background {
     handle: Option<JoinHandle<()>>,
+    should_run: Arc<AtomicBool>,
 }
 
-pub fn background(entries: u32) -> Result<BackgroundDropGuard> {
-    init(entries)?;
+impl Background {
+    pub fn new(entries: u32) -> Result<Background> {
+        let driver = Driver::new(entries)?;
+        driver.into_current();
 
-    SHOULD_RUN.store(true, Ordering::Relaxed);
-    let handle: JoinHandle<()> = thread::spawn(|| {
-        let ring = get_ring().unwrap();
-        while SHOULD_RUN.load(Ordering::Relaxed) {
-            enter::<CompleteHandler>(ring).unwrap();
-        }
-    });
+        let should_run = AtomicBool::new(true);
+        let should_run = Arc::new(should_run);
+        let mut out = Background {
+            handle: None,
+            should_run: should_run.clone(),
+        };
 
-    let handle = Some(handle);
-    let out = BackgroundDropGuard { handle };
-    Ok(out)
+        out.should_run.store(true, Ordering::Relaxed);
+        let handle: JoinHandle<()> = thread::spawn(move || {
+            let driver = Driver::current();
+            while should_run.load(Ordering::Relaxed) {
+                driver.enter::<CompleteHandler>().unwrap();
+            }
+        });
+
+        out.handle = Some(handle);
+        Ok(out)
+    }
 }
 
-impl Drop for BackgroundDropGuard {
+impl Drop for Background {
     fn drop(&mut self) {
-        SHOULD_RUN.store(false, Ordering::Relaxed);
+        self.should_run.store(false, Ordering::Relaxed);
         let nop = opcode::Nop::new().build();
-        submit(&nop);
+        let driver = Driver::current();
+        driver.submit(&nop);
         self.handle.take().unwrap().join().unwrap();
-        exit();
+        let _ = Driver::take_current();
     }
 }
